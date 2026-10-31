@@ -300,8 +300,14 @@ Read-only data exposed via the MCP resources protocol. Agents can read these wit
 | `after` | string | Pagination cursor |
 | `orderBy` | string | Sort field: `id`, `createdAt`, `host`, `method`, `path`, `query`, `fileExtension`, `source`, `statusCode`, `roundtripTime`, `responseLength`. Omit for Caido's default order |
 | `order` | string | `asc` or `desc` (default `desc` when `orderBy` is set; `desc` without `orderBy` sorts by id, i.e. newest first) |
+| `snippet` | object | Regex scan over the returned rows: `{regex, context, maxPerRequest, parts}` |
+| `fields` | string[] | Extra per-row fields: `createdAt`, `host`, `path`, `query`, `source`, `responseLength`, `roundtripTime` |
 
 `totalCount` in the response is every request matching `httpql`, not just the rows on the page, so `{"httpql": "...", "limit": 1}` counts matches in one call. The newest N is `{"limit": N, "order": "desc"}`. `nextCursor` keeps the requested order, so `after` pages contiguously.
+
+`snippet` annotates the rows `httpql` already selected: it reads each returned row's raw message (bounded to 8 parallel fetches), runs a Go RE2 pattern over the requested `parts` (`responseBody` by default, plus `requestBody`, `responseHeaders`, `requestHeaders`), and reports up to `maxPerRequest` matches per row (default 3, max 10), each with the part, the byte `offset` of the match, and a `context` excerpt of `context` bytes on each side (default 40, max 200). At most 1 MiB per part is searched: `snippetScanTruncated` marks a row where a part was longer, and `matchesTruncated` marks a row with more hits than were returned. The pattern must not match the empty string, and the scan never adds rows: one Caido request per returned row, no history scan.
+
+`fields` adds values the list query already returns, so it costs no extra request: `createdAt` (RFC 3339), `host`, `path`, `query` (explicit empty string when there is none), `source`, `responseLength` and `roundtripTime`. Rows without a response leave the two response fields out.
 
 #### caido_get_request
 
