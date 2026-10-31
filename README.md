@@ -311,6 +311,9 @@ Read-only data exposed via the MCP resources protocol. Agents can read these wit
 | `include` | string[] | `requestHeaders`, `requestBody`, `responseHeaders`, `responseBody` |
 | `bodyOffset` | int | Byte offset |
 | `bodyLimit` | int | Byte limit (default 2000) |
+| `bodyEncoding` | string | `auto` (default), `text` or `base64`; see below |
+
+Bodies are text when the selected bytes are UTF-8 and base64 when they are not, so a PNG or protobuf response survives the JSON layer. Base64 bodies carry `bodyBase64`, `bodyEncoding: "base64"`, the full byte `bodySize` and the slice's `bodyOffset`; `body` is empty. `bodyOffset` and `bodyLimit` count bytes, and text output trims a slice that lands inside a UTF-8 rune. `auto` also picks base64 when a binary content type (`image/png`, `application/octet-stream`, ...) carries NUL bytes; ASCII under the same type stays text, and text-mode output is unchanged.
 
 #### caido_send_request
 
@@ -355,6 +358,7 @@ Returns `statusCounts` (e.g. `{"200":2,"409":18}`) plus per-request status, timi
 | `id` | string | Replay entry ID (required) |
 | `bodyOffset` | int | Byte offset |
 | `bodyLimit` | int | Byte limit (default 2000) |
+| `bodyEncoding` | string | `auto` (default), `text` or `base64`; same envelope as `caido_get_request` |
 
 #### caido_get_automate_entry
 

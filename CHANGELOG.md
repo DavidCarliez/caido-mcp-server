@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **`caido_list_requests` can sort, and reports the total.** New `orderBy` (`id`, `createdAt`, `host`, `method`, `path`, `query`, `fileExtension`, `source`, `statusCode`, `roundtripTime`, `responseLength`) and `order` (`asc`/`desc`) parameters map onto Caido's `requests(order:)`, so the newest N is one call (`{"limit": 5, "order": "desc"}`) instead of paging from the oldest row. The response gains `totalCount`, the number of requests matching `httpql`, taken from the `count` the query already returned and the tool was discarding; `{"limit": 1}` plus `totalCount` counts matches without paging. Cursors keep the requested order, so `after` continues where `nextCursor` left off. Calls that pass neither parameter send the same query as before.
+- **Binary bodies survive `caido_get_request`.** Bodies that are not valid UTF-8 came back as a string where every invalid sequence had been replaced with U+FFFD, so an 8,008-byte PNG was unusable. They now return base64 in `bodyBase64` with `bodyEncoding: "base64"`, the full byte `bodySize` and the slice's `bodyOffset`. A new `bodyEncoding` parameter (`auto` default, `text`, `base64`) forces the representation; `text` output is identical to previous releases for UTF-8 bodies. `bodyOffset`/`bodyLimit` count bytes, and a text slice cut inside a UTF-8 rune is trimmed to the rune boundary instead of emitting half a rune. `caido_get_replay_entry` uses the same envelope for its response.
 
 ## [4.4.0] - 2026-10-29
 
