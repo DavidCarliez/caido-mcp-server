@@ -231,7 +231,7 @@ you use it, so upgrading does not require a fresh login.
 | `caido_create_finding` | Create finding linked to a request |
 | `caido_delete_findings` | Delete findings by IDs or reporter name |
 | `caido_export_findings` | Export findings for reporting |
-| `caido_get_sitemap` | Browse sitemap hierarchy |
+| `caido_get_sitemap` | Browse the sitemap tree with per-host request counts |
 | `caido_list_scopes` | List target scopes |
 | `caido_is_in_scope` | Check whether a host or URL is in the project scope; returns the matching scope and the allow/deny rule that decided it |
 | `caido_create_scope` | Create new scope with allow/deny lists |
@@ -351,6 +351,17 @@ Returns `statusCounts` (e.g. `{"200":2,"409":18}`) plus per-request status, timi
 | `id` | string | Replay entry ID (required) |
 | `bodyOffset` | int | Byte offset |
 | `bodyLimit` | int | Byte limit (default 2000) |
+
+#### caido_get_sitemap
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `parentId` | string | List this entry's children (omit for root domains) |
+| `depth` | string | With `parentId`: `direct` (default) or `all` (whole subtree) |
+| `limit` | int | Max entries (default 0 = all); truncates locally because Caido exposes no cursor here |
+| `includeRequestCounts` | bool | Add each entry's own captured-request count (default false) |
+
+Root domains carry `capturedRequests`, the exact number of captured requests for that host, read from the request history: the sitemap tree lists one request under several entries (directory, path, query), so summing entry counts overcounts, and a host entry's own `requests` connection covers only part of its traffic. `requestCount`, added with `includeRequestCounts`, is an entry's own count and does not add up to that total; it is off by default because it costs one nested count per entry (seconds and about 20% more bytes on a multi-thousand entry subtree). Responses report `totalEntries`, the connection count before `limit`, and `truncated`.
 
 #### caido_get_automate_entry
 

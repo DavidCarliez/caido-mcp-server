@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`caido_get_sitemap` reports request counts, depth and a limit.** Root domains now carry `capturedRequests`, the exact number of captured requests for that host (on the 20,001 request corpus: api 7,875, shop 9,227, static 1,483, auth 413, admin 776, graphql 227). The tree cannot supply that number: one request appears under its directory, its path and its query, so summing entry counts overcounts, and a host entry's own `requests` connection covered only 6,718 of 7,875. `depth` adds `all` for the whole subtree, `limit` truncates locally with `totalEntries`/`truncated` because Caido 0.59.0 accepts no cursor on these connections, and `includeRequestCounts` adds each entry's own count. That last option is off by default: it costs one nested count per entry (2.9 s and 1.4 MB for a 6,971 entry subtree against 0.7 s and 1.2 MB without).
+
 ## [4.4.0] - 2026-10-29
 
 Caido 0.58/0.59 support: native race testing through Replay Pipelines, TLS pass-through control, cURL input, and fixes found by testing against a live 0.59.0 server. Works with Caido 0.57+; `caido_race_pipeline` and `caido_passthrough_options` need 0.59.
