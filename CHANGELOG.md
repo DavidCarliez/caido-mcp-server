@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Binary bodies survive `caido_get_request`.** Bodies that are not valid UTF-8 came back as a string where every invalid sequence had been replaced with U+FFFD, so an 8,008-byte PNG was unusable. They now return base64 in `bodyBase64` with `bodyEncoding: "base64"`, the full byte `bodySize` and the slice's `bodyOffset`. A new `bodyEncoding` parameter (`auto` default, `text`, `base64`) forces the representation; `text` output is identical to previous releases for UTF-8 bodies. `bodyOffset`/`bodyLimit` count bytes, and a text slice cut inside a UTF-8 rune is trimmed to the rune boundary instead of emitting half a rune. `caido_get_replay_entry` uses the same envelope for its response.
+
 ## [4.4.0] - 2026-10-29
 
 Caido 0.58/0.59 support: native race testing through Replay Pipelines, TLS pass-through control, cURL input, and fixes found by testing against a live 0.59.0 server. Works with Caido 0.57+; `caido_race_pipeline` and `caido_passthrough_options` need 0.59.
