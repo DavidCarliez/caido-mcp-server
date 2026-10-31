@@ -361,7 +361,7 @@ Returns `statusCounts` (e.g. `{"200":2,"409":18}`) plus per-request status, timi
 | `limit` | int | Max entries (default 0 = all); truncates locally because Caido exposes no cursor here |
 | `includeRequestCounts` | bool | Add each entry's own captured-request count (default false) |
 
-Root domains carry `capturedRequests`, the exact number of captured requests for that host, read from the request history: the sitemap tree lists one request under several entries (directory, path, query), so summing entry counts overcounts, and a host entry's own `requests` connection covers only part of its traffic. `requestCount`, added with `includeRequestCounts`, is an entry's own count and does not add up to that total; it is off by default because it costs one nested count per entry (seconds and about 20% more bytes on a multi-thousand entry subtree). Responses report `totalEntries`, the connection count before `limit`, and `truncated`.
+Root domains carry `capturedRequests`, the exact number of captured requests for that host (all ports), read from the request history: the sitemap tree lists one request under several entries (directory, path, query), so summing entry counts overcounts, and a host entry's own `requests` connection covers only part of its traffic. `requestCount`, added with `includeRequestCounts`, is an entry's own count and does not add up to that total; it is off by default because it costs one nested count per entry (seconds and about 20% more bytes on a multi-thousand entry subtree). Responses report `totalEntries`, the connection count before `limit`, and `truncated`.
 
 #### caido_get_automate_entry
 
