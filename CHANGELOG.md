@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`caido_call_plugin` drives installed plugin backends.** Caido plugins register backend functions (`sdk.api.register`) and serve them at `POST /plugin/backend/{id}/function`, which had no MCP surface: an agent had to hand-roll the REST call with the access token. The new tool resolves the plugin by package manifestId, name, package id or backend id (`caido_list_plugins` now reports `manifestId` and the backend's `{id, running, error}`), encodes each argument as its own JSON string, and returns the function's `returns` value parsed as JSON, capped by `maxBytes` with `truncated`/`totalBytes`. Failures are mapped to what fixes them: an unknown plugin lists the installed manifestIds, a stopped backend or HTTP 500 says a Caido restart is needed (plugins installed while Caido runs are not callable until then), `invalid_procedure` points at the `sdk.api.register` names in the plugin source, and HTTP 401 points at the token. Marked destructive and open-world: plugin functions can send traffic or delete data.
+
 ## [4.4.0] - 2026-10-29
 
 Caido 0.58/0.59 support: native race testing through Replay Pipelines, TLS pass-through control, cURL input, and fixes found by testing against a live 0.59.0 server. Works with Caido 0.57+; `caido_race_pipeline` and `caido_passthrough_options` need 0.59.

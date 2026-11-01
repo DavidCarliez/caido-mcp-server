@@ -267,7 +267,8 @@ you use it, so upgrading does not require a fresh login.
 | `caido_list_hosted_files` | List hosted payload files |
 | `caido_list_tasks` | List running background tasks |
 | `caido_cancel_task` | Cancel a running task by ID |
-| `caido_list_plugins` | List installed plugin packages |
+| `caido_list_plugins` | List installed plugin packages, their manifestId and backend state |
+| `caido_call_plugin` | Call a function registered by a plugin backend (`sdk.api.register`) |
 | `caido_list_ws_streams` | List WebSocket streams (connections) from the WebSocket tab |
 | `caido_list_ws_messages` | List WebSocket frames for a stream (direction/format/decoded body) |
 | `caido_convert_body` | Convert a request body between JSON, form-urlencoded, XML, and multipart |
@@ -546,6 +547,36 @@ matches nothing.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `id` | string | Tamper rule ID (required) |
+
+#### caido_list_plugins
+
+No parameters. Returns each package's `id`, `manifestId`, `name`,
+`description`, `version` and, when the package ships one, `backend`
+(`{id, name, running, error}`). A backend that is not running cannot be called
+until Caido restarts; plugins installed while Caido is running have no runtime
+until then.
+
+#### caido_call_plugin
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `plugin` | string | Package `manifestId` (`quickssrf`), display name (`QuickSSRF`), package id or backend id; case-insensitive (required) |
+| `function` | string | Function name registered by the backend with `sdk.api.register` (required) |
+| `args` | array | Arguments, one JSON value each; each is JSON-encoded into its own string, which is the plugin route's wire form |
+| `maxBytes` | int | Cap on the returned text (default 20000, max 8000000); `truncated` and `totalBytes` report a cut |
+
+Calling a plugin backend is a POST to `{Caido URL}/plugin/backend/{id}/function`
+with the same access token the MCP server uses (the static `CAIDO_ACCESS_TOKEN`,
+or the stored OAuth login, refreshed when expired). The result is the plugin's
+`returns` value parsed as JSON, or the raw string when it is not JSON.
+
+`caido_list_plugins` lists what is installed. Function names and argument
+shapes are in each plugin's backend source, the `sdk.api.register("...")`
+calls in its repository. Example: `plugin: "quickssrf", function:
+"createSession", args: []` returns a session with a `url`; send a request to
+that URL, then call `function: "getInteractions"` with `args: ["<session id>"]`
+to read the hit. The tool is annotated destructive and open-world: plugin
+functions can send traffic, change plugin state or delete data.
 
 </details>
 
