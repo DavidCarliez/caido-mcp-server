@@ -445,3 +445,109 @@ func TestListRequestsSnippetSchema(t *testing.T) {
 		t.Errorf("snippet.regex maxLength = %v, want 1000", ml)
 	}
 }
+
+// listResponseWithSource builds a one-row list response with a request source.
+func listResponseWithSource(source string) map[string]any {
+	node := map[string]any{
+		"id":     "req-1",
+		"method": "GET",
+		"host":   "example.com",
+		"port":   443,
+		"path":   "/api/req-1",
+		"query":  "",
+		"isTls":  true,
+		"response": map[string]any{
+			"statusCode": 200,
+		},
+	}
+	if source != "" {
+		node["source"] = source
+	}
+	return map[string]any{
+		"requests": map[string]any{
+			"edges":    []map[string]any{{"node": node}},
+			"pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil},
+			"count":    map[string]any{"value": 1},
+		},
+	}
+}
+
+// TestListRequestsSourceOnNonProxyRows asserts rows that did not come through
+// the proxy carry their source without being asked, while captured proxy rows
+// keep their previous four keys.
+func TestListRequestsSourceOnNonProxyRows(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{"replay", "REPLAY", "REPLAY"},
+		{"automate", "AUTOMATE", "AUTOMATE"},
+		{"workflow", "WORKFLOW", "WORKFLOW"},
+		{"plugin", "PLUGIN", "PLUGIN"},
+		{"import", "IMPORT", "IMPORT"},
+		{"sample", "SAMPLE", "SAMPLE"},
+		{"intercept stays out", "INTERCEPT", ""},
+		{"empty stays out", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newListRequestsEnv(t, listResponseWithSource(tt.source))
+			result := env.CallTool(t, "caido_list_requests", map[string]any{"limit": 5})
+			if result.IsError {
+				t.Fatalf("unexpected error: %v", result.Content)
+			}
+			out := testutil.UnmarshalToolResult[tools.ListRequestsOutput](t, result)
+			row := out.Requests[0]
+			if tt.want == "" {
+				if row.Source != nil {
+					t.Fatalf("source = %q, want it omitted", *row.Source)
+				}
+				return
+			}
+			if row.Source == nil || *row.Source != tt.want {
+				t.Fatalf("source = %v, want %q", row.Source, tt.want)
+			}
+		})
+	}
+}
+
+// TestListRequestsInterceptRowShape asserts a captured proxy row marshals the
+// same four keys as before, even when the API reports its source.
+func TestListRequestsInterceptRowShape(t *testing.T) {
+	env := newListRequestsEnv(t, listResponseWithSource("INTERCEPT"))
+	result := env.CallTool(t, "caido_list_requests", map[string]any{"limit": 5})
+	if result.IsError {
+		t.Fatalf("unexpected error: %v", result.Content)
+	}
+	out := testutil.UnmarshalToolResult[tools.ListRequestsOutput](t, result)
+	raw, err := json.Marshal(out.Requests[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"id":"req-1","method":"GET","url":"https://example.com/api/req-1","statusCode":200}`
+	if string(raw) != want {
+		t.Fatalf("intercept row = %s, want %s", raw, want)
+	}
+}
+
+// TestListRequestsFieldsSourceOnIntercept asserts fields:["source"] still
+// emits the source for a captured proxy row.
+func TestListRequestsFieldsSourceOnIntercept(t *testing.T) {
+	env := newListRequestsEnv(t, listResponseWithSource("INTERCEPT"))
+	result := env.CallTool(t, "caido_list_requests", map[string]any{
+		"limit":  5,
+		"fields": []string{"source"},
+	})
+	if result.IsError {
+		t.Fatalf("unexpected error: %v", result.Content)
+	}
+	out := testutil.UnmarshalToolResult[tools.ListRequestsOutput](t, result)
+	row := out.Requests[0]
+	if row.Source == nil || *row.Source != "INTERCEPT" {
+		t.Fatalf("source = %v, want INTERCEPT", row.Source)
+	}
+	if row.Host != nil || row.Path != nil || row.CreatedAt != nil {
+		t.Errorf("unrequested fields were set: %+v", row)
+	}
+}
