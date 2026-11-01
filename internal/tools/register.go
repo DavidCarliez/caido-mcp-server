@@ -113,6 +113,7 @@ var allTools = []registerFunc{
 
 	// Plugins
 	RegisterListPluginsTool,
+	RegisterCallPluginTool,
 
 	// WebSocket History (read)
 	RegisterListWsStreamsTool,

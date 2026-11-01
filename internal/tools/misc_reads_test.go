@@ -143,37 +143,30 @@ func TestListHostedFilesTool(t *testing.T) {
 	}
 }
 
-// TestListPluginsTool covers caido_list_plugins.
-// SDK op: ListPluginPackages -> data.pluginPackages [{ id, name, description, version, ... }].
+// TestListPluginsTool covers caido_list_plugins, including the package
+// manifestId and backend state that make a plugin callable.
 func TestListPluginsTool(t *testing.T) {
 	tests := []struct {
-		name      string
-		mockData  map[string]any
-		mockErr   bool
-		wantErr   bool
-		wantCount int
-		wantID    string
-		wantVer   string
+		name       string
+		mockData   map[string]any
+		mockErr    bool
+		wantErr    bool
+		wantCount  int
+		wantID     string
+		wantVer    string
+		wantManif  string
+		wantBackID string
+		wantRun    bool
 	}{
 		{
-			name: "success",
-			mockData: map[string]any{
-				"pluginPackages": []map[string]any{
-					{
-						"id":          "pkg-1",
-						"name":        "Authorize",
-						"description": "Authz testing",
-						"version":     "1.2.3",
-						"manifestId":  "io.caido.authorize",
-						"installedAt": "2024-05-05T00:00:00Z",
-						"author":      nil,
-						"plugins":     []map[string]any{},
-					},
-				},
-			},
-			wantCount: 1,
-			wantID:    "pkg-1",
-			wantVer:   "1.2.3",
+			name:       "package with a running backend",
+			mockData:   pluginPackagesFixture(),
+			wantCount:  3,
+			wantID:     "pkg-1",
+			wantVer:    "1.0.4",
+			wantManif:  "quickssrf",
+			wantBackID: "backend-1",
+			wantRun:    true,
 		},
 		{
 			name:      "empty list",
@@ -192,8 +185,9 @@ func TestListPluginsTool(t *testing.T) {
 			env := testutil.NewMCPTestEnv(t, func(s *mcp.Server, c *caido.Client) {
 				tools.RegisterListPluginsTool(s, c)
 			})
+			env.Mock.ValidateAgainstSchema()
 			if !tt.mockErr {
-				env.Mock.On("ListPluginPackages", tt.mockData)
+				env.Mock.On("PluginPackagesWithBackends", tt.mockData)
 			}
 
 			result := env.CallTool(t, "caido_list_plugins", map[string]any{})
@@ -210,13 +204,31 @@ func TestListPluginsTool(t *testing.T) {
 			if len(out.Packages) != tt.wantCount {
 				t.Fatalf("packages count = %d, want %d", len(out.Packages), tt.wantCount)
 			}
-			if tt.wantCount > 0 {
-				if out.Packages[0].ID != tt.wantID {
-					t.Errorf("id = %q, want %q", out.Packages[0].ID, tt.wantID)
-				}
-				if out.Packages[0].Version != tt.wantVer {
-					t.Errorf("version = %q, want %q", out.Packages[0].Version, tt.wantVer)
-				}
+			if tt.wantCount == 0 {
+				return
+			}
+			first := out.Packages[0]
+			if first.ID != tt.wantID {
+				t.Errorf("id = %q, want %q", out.Packages[0].ID, tt.wantID)
+			}
+			if out.Packages[0].Version != tt.wantVer {
+				t.Errorf("version = %q, want %q", out.Packages[0].Version, tt.wantVer)
+			}
+			if out.Packages[0].ManifestID != tt.wantManif {
+				t.Errorf("manifestId = %q, want %q", out.Packages[0].ManifestID, tt.wantManif)
+			}
+			backend := out.Packages[0].Backend
+			if backend == nil {
+				t.Fatal("backend is nil")
+			}
+			if backend.ID != tt.wantBackID {
+				t.Errorf("backend id = %q, want %q", backend.ID, tt.wantBackID)
+			}
+			if backend.Running != tt.wantRun {
+				t.Errorf("backend.running = %v, want %v", backend.Running, tt.wantRun)
+			}
+			if out.Packages[2].Backend != nil {
+				t.Errorf("frontend-only package has a backend: %+v", out.Packages[2].Backend)
 			}
 		})
 	}
