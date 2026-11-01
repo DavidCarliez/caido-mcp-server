@@ -138,41 +138,52 @@ type RequestSummary struct {
 	SnippetError string `json:"snippetError,omitempty"`
 }
 
-// applyRequestFields copies the requested extra fields from a list row.
+// applyRequestFields copies the requested extra fields from a list row and
+// marks rows that did not come through the proxy.
 func applyRequestFields(
 	summary *RequestSummary,
 	r gen.ListRequestsRequestsRequestConnectionEdgesRequestEdgeNodeRequest,
 	fields map[string]bool,
 ) {
-	if fields == nil {
-		return
+	if fields != nil {
+		if fields["createdAt"] {
+			created := time.UnixMilli(r.CreatedAt).Format(time.RFC3339)
+			summary.CreatedAt = &created
+		}
+		if fields["host"] {
+			summary.Host = &r.Host
+		}
+		if fields["path"] {
+			summary.Path = &r.Path
+		}
+		if fields["query"] {
+			summary.Query = &r.Query
+		}
+		if fields["source"] {
+			source := string(r.Source)
+			summary.Source = &source
+		}
+		if r.Response != nil {
+			if fields["responseLength"] {
+				length := r.Response.Length
+				summary.ResponseLength = &length
+			}
+			if fields["roundtripTime"] {
+				roundtrip := r.Response.RoundtripTime
+				summary.RoundtripTime = &roundtrip
+			}
+		}
 	}
-	if fields["createdAt"] {
-		created := time.UnixMilli(r.CreatedAt).Format(time.RFC3339)
-		summary.CreatedAt = &created
-	}
-	if fields["host"] {
-		summary.Host = &r.Host
-	}
-	if fields["path"] {
-		summary.Path = &r.Path
-	}
-	if fields["query"] {
-		summary.Query = &r.Query
-	}
-	if fields["source"] {
+
+	// Replayed, automated or imported rows say so even when fields was not
+	// asked for: a row that is not captured proxy traffic is a different
+	// object to an agent looking for the captured request, and the row shape
+	// for captured traffic stays unchanged. An empty source is not a real
+	// enum value (it appears in fixtures), so it stays out.
+	if summary.Source == nil && r.Source != "" &&
+		r.Source != gen.SourceIntercept {
 		source := string(r.Source)
 		summary.Source = &source
-	}
-	if r.Response != nil {
-		if fields["responseLength"] {
-			length := r.Response.Length
-			summary.ResponseLength = &length
-		}
-		if fields["roundtripTime"] {
-			roundtrip := r.Response.RoundtripTime
-			summary.RoundtripTime = &roundtrip
-		}
 	}
 }
 
@@ -293,7 +304,7 @@ func RegisterListRequestsTool(
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "caido_list_requests",
 		Title:       "List Requests",
-		Description: `List HTTP requests. Filter with httpql (e.g. req.host.eq:"example.com"). On Caido 0.58+ match headers and bodies directly instead of scanning raw: req.header["Authorization"].cont:"Bearer", resp.body.cont:"stack trace". Returns id/method/url/status, and totalCount = how many requests match httpql. Newest first in one call: limit:5 with order:"desc" (sorts by id); orderBy picks the field (createdAt, statusCode, roundtripTime, responseLength, host, path, ...). Counting matches is limit:1 plus totalCount; no paging needed. Paginate with after from nextCursor, which keeps the same order. See a value without downloading bodies: snippet:{regex:"AKIA[0-9A-Z]{16}"} scans the returned rows (responseBody by default; requestBody and headers optional) and reports each match's part, byte offset and context excerpt, up to 3 per row. fields adds createdAt, host, path, query, source, responseLength or roundtripTime to each row.`,
+		Description: `List HTTP requests. Filter with httpql (e.g. req.host.eq:"example.com"). On Caido 0.58+ match headers and bodies directly instead of scanning raw: req.header["Authorization"].cont:"Bearer", resp.body.cont:"stack trace". Returns id/method/url/status, and totalCount = how many requests match httpql. Newest first in one call: limit:5 with order:"desc" (sorts by id); orderBy picks the field (createdAt, statusCode, roundtripTime, responseLength, host, path, ...). Counting matches is limit:1 plus totalCount; no paging needed. Paginate with after from nextCursor, which keeps the same order. See a value without downloading bodies: snippet:{regex:"AKIA[0-9A-Z]{16}"} scans the returned rows (responseBody by default; requestBody and headers optional) and reports each match's part, byte offset and context excerpt, up to 3 per row. fields adds createdAt, host, path, query, source, responseLength or roundtripTime to each row. Rows that did not come through the proxy (source REPLAY, AUTOMATE, WORKFLOW, PLUGIN, IMPORT, SAMPLE) carry their source automatically; add source:"intercept" to httpql to list only captured proxy traffic.`,
 		InputSchema: schemaFor[ListRequestsInput](func(s *jsonschema.Schema) {
 			if p := prop(s, "httpql"); p != nil {
 				p.MaxLength = intPtr(10000)

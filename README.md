@@ -309,6 +309,8 @@ Read-only data exposed via the MCP resources protocol. Agents can read these wit
 
 `fields` adds values the list query already returns, so it costs no extra request: `createdAt` (RFC 3339), `host`, `path`, `query` (explicit empty string when there is none), `source`, `responseLength` and `roundtripTime`. Rows without a response leave the two response fields out.
 
+Rows that did not come through the proxy (`REPLAY`, `AUTOMATE`, `WORKFLOW`, `PLUGIN`, `IMPORT`, `SAMPLE`) carry `source` without being asked, so a replayed or automated row is visible in the listing and an agent sorting newest-first does not mistake one for the captured request. Captured proxy rows keep the same four keys; `fields: ["source"]` still emits the value for every row, `INTERCEPT` included. Add `source:"intercept"` to `httpql` to list only captured proxy traffic.
+
 #### caido_get_request
 
 | Parameter | Type | Description |
