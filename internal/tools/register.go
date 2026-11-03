@@ -119,6 +119,11 @@ var allTools = []registerFunc{
 	RegisterListWsStreamsTool,
 	RegisterListWsMessagesTool,
 
+	// WebSocket Replay
+	RegisterSetWsMessageDraftTool,
+	RegisterClearWsMessageDraftTool,
+	RegisterSendWsMessageTool,
+
 	// Utilities
 	RegisterConvertBodyTool,
 

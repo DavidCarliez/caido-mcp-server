@@ -22,7 +22,7 @@
 
 Two ways to interact with your Caido proxy:
 
-- **MCP Server** - expose 70 tools and 6 read-only resources to AI assistants (Claude Code, Cursor, etc.) via the Model Context Protocol
+- **MCP Server** - expose 74 tools and 6 read-only resources to AI assistants (Claude Code, Cursor, etc.) via the Model Context Protocol
 - **CLI** - standalone terminal client for pentesters who prefer the command line
 
 Both share the same auth token, the same Go SDK, and the same codebase.
@@ -33,6 +33,7 @@ Both share the same auth token, the same Go SDK, and the same codebase.
 |----------|-------------|
 | **Proxy History** | Search requests with HTTPQL, get full request/response details, diff two responses |
 | **Replay** | Send HTTP requests (raw or a pasted cURL command), get response inline (status, headers, body). Per-session cookie jar auto-persists `Set-Cookie` between calls |
+| **WebSocket** | List streams and frames; create a `ws` replay session, read a WebSocket replay entry (handshake, draft, recorded frames), write the message draft (text or base64, TEXT/BINARY/PING/PONG/CLOSE), send a frame through a live task and read back what was recorded |
 | **Race conditions** | Single-packet, last-byte-sync and sequential runs through Caido Replay Pipelines (0.59+), with a status-code tally per run |
 | **Automate** | Access fuzzing sessions, results, and payloads. Start/pause/resume/cancel tasks |
 | **Findings** | Create, list, delete, and export security findings |
@@ -200,7 +201,7 @@ you use it, so upgrading does not require a fresh login.
 "What's in scope?"
 ```
 
-### MCP Tools (70)
+### MCP Tools (74)
 
 | Tool | Description |
 |------|-------------|
@@ -216,7 +217,7 @@ you use it, so upgrading does not require a fresh login.
 | `caido_delete_replay_sessions` | Bulk delete replay sessions by ID |
 | `caido_move_replay_session` | Move a session to a different collection |
 | `caido_rename_replay_session` | Rename a replay session (tab title) |
-| `caido_get_replay_entry` | Get replay entry with response. 2KB body limit default |
+| `caido_get_replay_entry` | Get replay entry with response; WebSocket entries return the handshake, draft and recorded frames. 2KB body limit default |
 | `caido_clear_session_cookies` | Wipe the in-memory cookie jar for a replay session |
 | `caido_get_session_cookies` | List metadata for cookies stored in a session jar matching a URL (values not returned) |
 | `caido_list_replay_collections` | List replay session collections |
@@ -271,6 +272,9 @@ you use it, so upgrading does not require a fresh login.
 | `caido_call_plugin` | Call a function registered by a plugin backend (`sdk.api.register`) |
 | `caido_list_ws_streams` | List WebSocket streams (connections) from the WebSocket tab |
 | `caido_list_ws_messages` | List WebSocket frames for a stream (direction/format/decoded body) |
+| `caido_set_ws_message_draft` | Write a WebSocket replay entry's pending message (text/base64, direction, format) |
+| `caido_clear_ws_message_draft` | Clear a WebSocket replay entry's pending message |
+| `caido_send_ws_message` | Send one frame on a `ws` replay session and read back the frames Caido records |
 | `caido_convert_body` | Convert a request body between JSON, form-urlencoded, XML, and multipart |
 | `caido_race_pipeline` | Race requests through a Caido Replay Pipeline (single-packet, last-byte or sequential; Caido 0.59+); logged in history |
 | `caido_race_window_send` | Fire raw HTTP/1.1 requests with synchronized last-byte send for race-condition testing (bypasses Caido proxy) |
